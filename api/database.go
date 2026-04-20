@@ -97,3 +97,55 @@ func getURLByShortCode(shortCode string) (*URL, error) {
 
 	return &url, nil
 }
+
+func updateURL(shortCode string, newURL string) (*URL, error) {
+	// Check if short code exists
+	var exists int
+	err := db.QueryRow("SELECT COUNT(*) FROM urls WHERE short_code = ?", shortCode).Scan(&exists)
+	if err != nil {
+		return nil, err
+	}
+	if exists == 0 {
+		return nil, nil // Not found
+	}
+
+	// Update the URL
+	_, err = db.Exec(
+		"UPDATE urls SET url = ?, updated_at = CURRENT_TIMESTAMP WHERE short_code = ?",
+		newURL, shortCode,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch updated record
+	var url URL
+	err = db.QueryRow(
+		"SELECT id, url, short_code, created_at, updated_at FROM urls WHERE short_code = ?",
+		shortCode,
+	).Scan(&url.ID, &url.URL, &url.ShortCode, &url.CreatedAt, &url.UpdatedAt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &url, nil
+}
+
+func deleteURL(shortCode string) (bool, error) {
+	result, err := db.Exec("DELETE FROM urls WHERE short_code = ?", shortCode)
+	if err != nil {
+		return false, err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	if rowsAffected == 0 {
+		return false, nil // Not found
+	}
+
+	return true, nil // Successfully deleted
+}
