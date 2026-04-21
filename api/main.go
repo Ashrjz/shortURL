@@ -19,6 +19,9 @@ func main() {
 	r.GET("/shorten/:code", getShortURL)
 	r.PUT("/shorten/:code", updateShortURL)
 	r.DELETE("/shorten/:code", deleteShortURL)
+	r.GET("/shorten/:code/stats", getURLStatsHandler)
+	
+	r.GET("/:code", redirectURL)
 
 	// Start server
 	r.Run(":8080")

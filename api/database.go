@@ -26,12 +26,19 @@ func initDB() {
 		short_code TEXT UNIQUE NOT NULL,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE TABLE IF NOT EXISTS stats (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		short_code TEXT NOT NULL,
+		accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (short_code) REFERENCES urls(short_code) ON DELETE CASCADE
 	);`
 
 	_, err = db.Exec(createTableQuery)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 }
 
 func closeDB() {
@@ -149,3 +156,48 @@ func deleteURL(shortCode string) (bool, error) {
 
 	return true, nil // Successfully deleted
 }
+
+func recordAccess(shortCode string) error {
+	_, err := db.Exec(
+		"INSERT INTO stats (short_code) VALUES (?)",
+		shortCode,
+	)
+	return err
+}
+
+func getURLStats(shortCode string) (*URLStats, error) {
+	var stats URLStats
+	
+	// Get URL data and count stats
+	err := db.QueryRow(`
+		SELECT 
+			u.id, 
+			u.url, 
+			u.short_code, 
+			u.created_at, 
+			u.updated_at,
+			COUNT(s.id) as access_count
+		FROM urls u
+		LEFT JOIN stats s ON u.short_code = s.short_code
+		WHERE u.short_code = ?
+		GROUP BY u.id
+	`, shortCode).Scan(
+		&stats.ID,
+		&stats.URL,
+		&stats.ShortCode,
+		&stats.CreatedAt,
+		&stats.UpdatedAt,
+		&stats.AccessCount,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil // Not found
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
+}
+
+

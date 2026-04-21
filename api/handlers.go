@@ -132,3 +132,49 @@ func deleteShortURL(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+func redirectURL(c *gin.Context) {
+	shortCode := c.Param("code")
+
+	url, err := getURLByShortCode(shortCode)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve URL",
+		})
+		return
+	}
+
+	if url == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Short URL not found",
+		})
+		return
+	}
+
+	// Record the access
+	recordAccess(shortCode)
+
+	// Redirect to original URL
+	c.Redirect(http.StatusFound, url.URL)
+}
+
+func getURLStatsHandler(c *gin.Context) {
+	shortCode := c.Param("code")
+
+	stats, err := getURLStats(shortCode)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to retrieve stats",
+		})
+		return
+	}
+
+	if stats == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Short URL not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, stats)
+}
