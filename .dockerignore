@@ -1,0 +1,8 @@
+urls.db
+urls.db-shm
+urls.db-wal
+.git
+.gitignore
+README.md
+ToDo.md
+.vscode

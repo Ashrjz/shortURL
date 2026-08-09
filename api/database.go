@@ -4,14 +4,14 @@ import (
 	"database/sql"
 	"log"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 var db *sql.DB
 
 func initDB() {
 	var err error
-	db, err = sql.Open("sqlite3", "../urls.db?_busy_timeout=5000&_journal_mode=WAL")
+	db, err = sql.Open("sqlite", "../urls.db?_busy_timeout=5000&_journal_mode=WAL")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func recordAccess(shortCode string) error {
 
 func getURLStats(shortCode string) (*URLStats, error) {
 	var stats URLStats
-	
+
 	// Get URL data and count stats
 	err := db.QueryRow(`
 		SELECT 
@@ -199,5 +199,3 @@ func getURLStats(shortCode string) (*URLStats, error) {
 
 	return &stats, nil
 }
-
-
