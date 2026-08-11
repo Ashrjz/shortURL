@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+    postgres:
+        image: postgres:16-alpine
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: shorturl
+        ports:
+            - "5432:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+
+    app:
+        build: .
+        ports:
+            - "8080:8080"
+        environment:
+            DATABASE_URL: "host=postgres port=5432 user=postgres password=postgres dbname=shorturl sslmode=disable"
+        depends_on:
+            - postgres
+
+volumes:
+    postgres_data:

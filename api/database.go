@@ -3,42 +3,62 @@ package main
 import (
 	"database/sql"
 	"log"
+	"os"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
 
 func initDB() {
 	var err error
-	db, err = sql.Open("sqlite", "../urls.db?_busy_timeout=5000&_journal_mode=WAL")
+
+	connStr := os.Getenv("DATABASE_URL")
+	if connStr == "" {
+		connStr = "host=localhost port=5432 user=postgres password=postgres dbname=shorturl sslmode=disable"
+	}
+
+	db, err = sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
+	if err = db.Ping(); err != nil {
+		log.Fatal(err)
+	}
 
-	createTableQuery := `
+	// Connection pool settings (Postgres handles concurrency well)
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+
+	createTables()
+}
+
+func createTables() {
+	createURLsTable := `
 	CREATE TABLE IF NOT EXISTS urls (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id SERIAL PRIMARY KEY,
 		url TEXT NOT NULL,
 		short_code TEXT UNIQUE NOT NULL,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);`
+
+	createStatsTable := `
 	CREATE TABLE IF NOT EXISTS stats (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id SERIAL PRIMARY KEY,
 		short_code TEXT NOT NULL,
-		accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (short_code) REFERENCES urls(short_code) ON DELETE CASCADE
 	);`
 
-	_, err = db.Exec(createTableQuery)
-	if err != nil {
+	if _, err := db.Exec(createURLsTable); err != nil {
 		log.Fatal(err)
 	}
 
+	if _, err := db.Exec(createStatsTable); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func closeDB() {
@@ -48,10 +68,9 @@ func closeDB() {
 func createURL(originalURL string) (*URL, error) {
 	shortCode := generateShortCode()
 
-	// Check if short code already exists, regenerate if needed
 	for {
 		var exists int
-		err := db.QueryRow("SELECT COUNT(*) FROM urls WHERE short_code = ?", shortCode).Scan(&exists)
+		err := db.QueryRow("SELECT COUNT(*) FROM urls WHERE short_code = $1", shortCode).Scan(&exists)
 		if err != nil {
 			return nil, err
 		}
@@ -61,24 +80,12 @@ func createURL(originalURL string) (*URL, error) {
 		shortCode = generateShortCode()
 	}
 
-	result, err := db.Exec(
-		"INSERT INTO urls (url, short_code) VALUES (?, ?)",
-		originalURL, shortCode,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch the created record with timestamps
 	var url URL
-	err = db.QueryRow(
-		"SELECT id, url, short_code, created_at, updated_at FROM urls WHERE id = ?",
-		id,
+	err := db.QueryRow(
+		`INSERT INTO urls (url, short_code) 
+		 VALUES ($1, $2) 
+		 RETURNING id, url, short_code, created_at, updated_at`,
+		originalURL, shortCode,
 	).Scan(&url.ID, &url.URL, &url.ShortCode, &url.CreatedAt, &url.UpdatedAt)
 
 	if err != nil {
@@ -91,7 +98,7 @@ func createURL(originalURL string) (*URL, error) {
 func getURLByShortCode(shortCode string) (*URL, error) {
 	var url URL
 	err := db.QueryRow(
-		"SELECT id, url, short_code, created_at, updated_at FROM urls WHERE short_code = ?",
+		"SELECT id, url, short_code, created_at, updated_at FROM urls WHERE short_code = $1",
 		shortCode,
 	).Scan(&url.ID, &url.URL, &url.ShortCode, &url.CreatedAt, &url.UpdatedAt)
 
@@ -106,32 +113,16 @@ func getURLByShortCode(shortCode string) (*URL, error) {
 }
 
 func updateURL(shortCode string, newURL string) (*URL, error) {
-	// Check if short code exists
-	var exists int
-	err := db.QueryRow("SELECT COUNT(*) FROM urls WHERE short_code = ?", shortCode).Scan(&exists)
-	if err != nil {
-		return nil, err
-	}
-	if exists == 0 {
-		return nil, nil // Not found
-	}
-
-	// Update the URL
-	_, err = db.Exec(
-		"UPDATE urls SET url = ?, updated_at = CURRENT_TIMESTAMP WHERE short_code = ?",
-		newURL, shortCode,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch updated record
 	var url URL
-	err = db.QueryRow(
-		"SELECT id, url, short_code, created_at, updated_at FROM urls WHERE short_code = ?",
-		shortCode,
+	err := db.QueryRow(
+		`UPDATE urls SET url = $1, updated_at = CURRENT_TIMESTAMP WHERE short_code = $2
+		RETURNING id, url, short_code, created_at, updated_at`,
+		newURL, shortCode,
 	).Scan(&url.ID, &url.URL, &url.ShortCode, &url.CreatedAt, &url.UpdatedAt)
 
+	if err == sql.ErrNoRows {
+		return nil, nil // Not found
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +131,7 @@ func updateURL(shortCode string, newURL string) (*URL, error) {
 }
 
 func deleteURL(shortCode string) (bool, error) {
-	result, err := db.Exec("DELETE FROM urls WHERE short_code = ?", shortCode)
+	result, err := db.Exec("DELETE FROM urls WHERE short_code = $1", shortCode)
 	if err != nil {
 		return false, err
 	}
@@ -159,7 +150,7 @@ func deleteURL(shortCode string) (bool, error) {
 
 func recordAccess(shortCode string) error {
 	_, err := db.Exec(
-		"INSERT INTO stats (short_code) VALUES (?)",
+		"INSERT INTO stats (short_code) VALUES ($1)",
 		shortCode,
 	)
 	return err
@@ -179,7 +170,7 @@ func getURLStats(shortCode string) (*URLStats, error) {
 			COUNT(s.id) as access_count
 		FROM urls u
 		LEFT JOIN stats s ON u.short_code = s.short_code
-		WHERE u.short_code = ?
+		WHERE u.short_code = $1
 		GROUP BY u.id
 	`, shortCode).Scan(
 		&stats.ID,
