@@ -15,6 +15,66 @@ type UpdateURLRequest struct {
 	URL string `json:"url" binding:"required,url"`
 }
 
+type RegisterRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required,min=6"`
+}
+
+type LoginRequest struct {
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+func register(c *gin.Context) {
+	var req RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	hash, err := hashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	userID, err := createUser(req.Username, hash)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Username already exists"})
+		return
+	}
+
+	token, err := generateToken(userID, req.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"token": token})
+}
+
+func login(c *gin.Context) {
+	var req LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, passwordHash, err := getUserByUsername(req.Username)
+	if err != nil || !checkPassword(req.Password, passwordHash) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	token, err := generateToken(userID, req.Username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
 func shortenURL(c *gin.Context) {
 	var req shortenRequest
 

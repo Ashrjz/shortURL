@@ -15,12 +15,21 @@ func main() {
 
 	// Routes
 	r.GET("/health", healthCheck)
-	r.POST("/shorten", shortenURL)
+	r.POST("/register", register)
+	r.POST("/login", login)
+
+	// Protected routes
+	protected := r.Group("/")
+	protected.Use(authMiddleware())
+	{
+		protected.POST("/shorten", shortenURL)
+		protected.PUT("/shorten/:code", updateShortURL)
+		protected.DELETE("/shorten/:code", deleteShortURL)
+	}
+
+	// Public routes (no auth needed)
 	r.GET("/shorten/:code", getShortURL)
-	r.PUT("/shorten/:code", updateShortURL)
-	r.DELETE("/shorten/:code", deleteShortURL)
 	r.GET("/shorten/:code/stats", getURLStatsHandler)
-	
 	r.GET("/:code", redirectURL)
 
 	// Start server

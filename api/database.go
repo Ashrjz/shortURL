@@ -52,6 +52,14 @@ func createTables() {
 		FOREIGN KEY (short_code) REFERENCES urls(short_code) ON DELETE CASCADE
 	);`
 
+	createUsersTable := `
+	CREATE TABLE IF NOT EXISTS users (
+		id SERIAL PRIMARY KEY,
+		username TEXT UNIQUE NOT NULL,
+		password_hash TEXT NOT NULL,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	);`
+
 	if _, err := db.Exec(createURLsTable); err != nil {
 		log.Fatal(err)
 	}
@@ -59,10 +67,35 @@ func createTables() {
 	if _, err := db.Exec(createStatsTable); err != nil {
 		log.Fatal(err)
 	}
+
+	if _, err := db.Exec(createUsersTable); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func closeDB() {
 	db.Close()
+}
+
+func createUser(username, passwordHash string) (int, error) {
+	var userID int
+	err := db.QueryRow(
+		"INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id",
+		username, passwordHash,
+	).Scan(&userID)
+
+	return userID, err
+}
+
+func getUserByUsername(username string) (int, string, error) {
+	var userID int
+	var passwordHash string
+	err := db.QueryRow(
+		"SELECT id, password_hash FROM users WHERE username = $1",
+		username,
+	).Scan(&userID, &passwordHash)
+
+	return userID, passwordHash, err
 }
 
 func createURL(originalURL string) (*URL, error) {
