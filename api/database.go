@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 )
 
 var db *sql.DB
+var redisClient *redis.Client
+var ctx = context.Background()
 
 func initDB() {
 	var err error
@@ -75,6 +80,12 @@ func createTables() {
 
 func closeDB() {
 	db.Close()
+}
+
+func initRedis() {
+	redisClient = redis.NewClient(&redis.Options{
+		Addr: os.Getenv("REDIS_ADDR"),
+	})
 }
 
 func createUser(username, passwordHash string) (int, error) {
@@ -222,4 +233,16 @@ func getURLStats(shortCode string) (*URLStats, error) {
 	}
 
 	return &stats, nil
+}
+
+func getCachedURL(shortCode string) (string, error) {
+	return redisClient.Get(ctx, shortCode).Result()
+}
+
+func setCachedURL(shortCode, url string) error {
+	return redisClient.Set(ctx, shortCode, url, 10*time.Minute).Err()
+}
+
+func deleteCachedURL(shortCode string) error {
+	return redisClient.Del(ctx, shortCode).Err()
 }

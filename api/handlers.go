@@ -169,6 +169,7 @@ func updateShortURL(c *gin.Context) {
 		return
 	}
 
+	deleteCachedURL(shortCode)
 	c.JSON(http.StatusOK, url)
 }
 
@@ -190,11 +191,18 @@ func deleteShortURL(c *gin.Context) {
 		return
 	}
 
+	deleteCachedURL(shortCode)
 	c.Status(http.StatusNoContent)
 }
 
 func redirectURL(c *gin.Context) {
 	shortCode := c.Param("code")
+
+	if cachedURL, err := getCachedURL(shortCode); err == nil {
+		recordAccess(shortCode)
+		c.Redirect(http.StatusFound, cachedURL)
+		return
+	}
 
 	url, err := getURLByShortCode(shortCode)
 	if err != nil {
@@ -211,10 +219,8 @@ func redirectURL(c *gin.Context) {
 		return
 	}
 
-	// Record the access
+	setCachedURL(shortCode, url.URL)
 	recordAccess(shortCode)
-
-	// Redirect to original URL
 	c.Redirect(http.StatusFound, url.URL)
 }
 

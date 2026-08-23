@@ -7,6 +7,7 @@ import (
 func main() {
 	// Initialize database
 	initDB()
+	initRedis()
 	defer closeDB()
 
 	// Create router
