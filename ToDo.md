@@ -5,6 +5,6 @@
 - [x] Switch to PostgreSQL (learn production databases)
 - [x] Add JWT auth (learn security)
 - [x] Add Redis caching (learn caching strategies)
-- [ ] ~~Build a simple frontend (full-stack experience)~~
+- [ ] Build a simple frontend (full-stack experience)
 - [ ] Add CI/CD with GitHub Actions (learn DevOps)
 - [ ] Deploy to cloud (AWS/GCP/Railway/Render)

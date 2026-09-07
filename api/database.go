@@ -235,6 +235,25 @@ func getURLStats(shortCode string) (*URLStats, error) {
 	return &stats, nil
 }
 
+func getAllURLs() ([]URL, error) {
+	rows, err := db.Query("SELECT id, url, short_code, created_at, updated_at FROM urls ORDER BY created_at DESC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	urls := []URL{}
+	for rows.Next() {
+		var u URL
+		if err := rows.Scan(&u.ID, &u.URL, &u.ShortCode, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			return nil, err
+		}
+		urls = append(urls, u)
+	}
+
+	return urls, nil
+}
+
 func getCachedURL(shortCode string) (string, error) {
 	return redisClient.Get(ctx, shortCode).Result()
 }

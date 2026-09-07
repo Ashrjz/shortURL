@@ -244,3 +244,13 @@ func getURLStatsHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, stats)
 }
+
+func listURLs(c *gin.Context) {
+	urls, err := getAllURLs()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve URLs"})
+		return
+	}
+
+	c.JSON(http.StatusOK, urls)
+}
