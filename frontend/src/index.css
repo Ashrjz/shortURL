@@ -32,6 +32,20 @@
 	}
 }
 
+@theme {
+  --color-emerald-50: #edf7ef;
+  --color-emerald-100: #dbf0e0;
+  --color-emerald-200: #b7e1c0;
+  --color-emerald-300: #93d2a1;
+  --color-emerald-400: #6fc381;
+  --color-emerald-500: #4bb462;
+  --color-emerald-600: #3c904e;
+  --color-emerald-700: #2d6c3b;
+  --color-emerald-800: #1e4827;
+  --color-emerald-900: #0f2414;
+  --color-emerald-950: #0b190e;
+}
+
 @media (prefers-color-scheme: dark) {
 	:root {
 		--text: #9ca3af;
@@ -66,7 +80,8 @@
 }
 
 body {
-	margin: 0;
+  background-color: #0b0f0d;
+  color: #e5e9e6;
 }
 
 h1,
