@@ -1,33 +1,67 @@
-version: "3.8"
+version: '3.8'
 
 services:
-    postgres:
-        image: postgres:16-alpine
-        environment:
-            POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: postgres
-            POSTGRES_DB: shorturl
-        ports:
-            - "5432:5432"
-        volumes:
-            - postgres_data:/var/lib/postgresql/data
+  postgres:
+    image: postgres:16-alpine
+    container_name: url-shortener-db
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - shortener-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-    redis:
-        image: redis:alpine
-        ports:
-            - "6379:6379"
+  redis:
+    image: redis:alpine
+    container_name: url-shortener-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - shortener-network
 
-    app:
-        build: .
-        ports:
-            - "8080:8080"
-        environment:
-            DATABASE_URL: "host=postgres port=5432 user=postgres password=postgres dbname=shorturl sslmode=disable"
-            JWT_SECRET: "JWT-SECRET-KEY"
-            REDIS_ADDR: "redis:6379"
-        depends_on:
-            - postgres
-            - redis
+  app:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: url-shortener-app
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_ADDR: ${REDIS_ADDR}
+      GIN_MODE: release
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - shortener-network
+
+  frontend:
+    build: ./frontend
+    container_name: url-shortener-frontend
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_BASE_URL: http://app:8080
+    depends_on:
+      - app
+    networks:
+      - shortener-network
 
 volumes:
-    postgres_data:
+  postgres_data:
+
+networks:
+  shortener-network:

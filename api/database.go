@@ -83,8 +83,13 @@ func closeDB() {
 }
 
 func initRedis() {
+	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		addr = "localhost:6379"
+	}
+
 	redisClient = redis.NewClient(&redis.Options{
-		Addr: os.Getenv("REDIS_ADDR"),
+		Addr: addr,
 	})
 }
 

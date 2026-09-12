@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -19,7 +20,7 @@ func main() {
 
 	// CORS middleware - allow frontend dev server
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowOrigins:     []string{"http://localhost", "http://localhost:80", "http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -46,6 +47,11 @@ func main() {
 	r.GET("/shorten/:code", getShortURL)
 	r.GET("/shorten/:code/stats", getURLStatsHandler)
 	r.GET("/:code", redirectURL)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
 	// Start server
 	r.Run(":8080")

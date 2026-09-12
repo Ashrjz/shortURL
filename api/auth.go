@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"os"
 	"time"
 
@@ -9,7 +10,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+var jwtSecret = func() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Fatal("JWT_SECRET not set")
+	}
+	return []byte(secret)
+}()
 
 type Claims struct {
 	UserID   int    `json:"userId"`
