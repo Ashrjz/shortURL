@@ -6,5 +6,5 @@
 - [x] Add JWT auth (learn security)
 - [x] Add Redis caching (learn caching strategies)
 - [x] Build a simple frontend (full-stack experience)
-- [ ] Add CI/CD with GitHub Actions (learn DevOps)
+- [x] Add CI/CD with GitHub Actions (learn DevOps)
 - [ ] Deploy to cloud (AWS/GCP/Railway/Render)

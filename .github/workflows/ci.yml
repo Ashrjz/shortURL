@@ -10,7 +10,7 @@ jobs:
     backend:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             - name: Set up Go
               uses: actions/setup-go@v5
@@ -21,7 +21,7 @@ jobs:
               run: go mod download
 
             - name: Build
-              run: go build -v ./api
+              run: go build -v -o bin/app ./api
 
             - name: Test
               run: go test -v ./...
@@ -32,10 +32,10 @@ jobs:
             run:
                 working-directory: ./frontend
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             - name: Set up Node
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v5
               with:
                   node-version: "24"
 
