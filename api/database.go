@@ -11,6 +11,62 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type URLStore interface {
+	createURL(originalURL string) (*URL, error)
+	getURLByShortCode(shortCode string) (*URL, error)
+	updateURL(shortCode, newURL string) (*URL, error)
+	deleteURL(shortCode string) (bool, error)
+	getURLStats(shortCode string) (*URLStats, error)
+	getAllURLs() ([]URL, error)
+	createUser(username, passwordHash string) (int, error)
+	getUserByUsername(username string) (int, string, error)
+	recordAccess(shortCode string) error
+}
+
+type pgStore struct{}
+
+func (s *pgStore) createURL(originalURL string) (*URL, error) { return createURL(originalURL) }
+func (s *pgStore) getURLByShortCode(shortCode string) (*URL, error) {
+	return getURLByShortCode(shortCode)
+}
+func (s *pgStore) updateURL(shortCode, newURL string) (*URL, error) {
+	return updateURL(shortCode, newURL)
+}
+func (s *pgStore) deleteURL(shortCode string) (bool, error)        { return deleteURL(shortCode) }
+func (s *pgStore) getURLStats(shortCode string) (*URLStats, error) { return getURLStats(shortCode) }
+func (s *pgStore) getAllURLs() ([]URL, error)                      { return getAllURLs() }
+func (s *pgStore) createUser(username, passwordHash string) (int, error) {
+	return createUser(username, passwordHash)
+}
+func (s *pgStore) getUserByUsername(username string) (int, string, error) {
+	return getUserByUsername(username)
+}
+func (s *pgStore) recordAccess(shortCode string) error {
+	return recordAccess(shortCode)
+}
+
+var store URLStore = &pgStore{}
+
+type Cache interface {
+	getCachedURL(shortCode string) (string, error)
+	setCachedURL(shortCode, url string) error
+	deleteCachedURL(shortCode string) error
+}
+
+type redisCache struct{}
+
+func (c *redisCache) getCachedURL(shortCode string) (string, error) {
+	return getCachedURL(shortCode)
+}
+func (c *redisCache) setCachedURL(shortCode, url string) error {
+	return setCachedURL(shortCode, url)
+}
+func (c *redisCache) deleteCachedURL(shortCode string) error {
+	return deleteCachedURL(shortCode)
+}
+
+var cache Cache = &redisCache{}
+
 var db *sql.DB
 var redisClient *redis.Client
 var ctx = context.Background()

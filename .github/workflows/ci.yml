@@ -25,6 +25,8 @@ jobs:
 
             - name: Test
               run: go test -v ./...
+              env:
+                JWT_SECRET: test-secret
 
     frontend:
         runs-on: ubuntu-latest
@@ -48,7 +50,7 @@ jobs:
     docker:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v5
 
             - name: Build backend image
               run: docker build -f api/Dockerfile -t url-shortener-api .

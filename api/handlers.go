@@ -38,7 +38,7 @@ func register(c *gin.Context) {
 		return
 	}
 
-	userID, err := createUser(req.Username, hash)
+	userID, err := store.createUser(req.Username, hash)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Username already exists"})
 		return
@@ -60,7 +60,7 @@ func login(c *gin.Context) {
 		return
 	}
 
-	userID, passwordHash, err := getUserByUsername(req.Username)
+	userID, passwordHash, err := store.getUserByUsername(req.Username)
 	if err != nil || !checkPassword(req.Password, passwordHash) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
@@ -94,7 +94,7 @@ func shortenURL(c *gin.Context) {
 		return
 	}
 
-	url, err := createURL(req.URL)
+	url, err := store.createURL(req.URL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to create short URL",
@@ -115,7 +115,7 @@ func healthCheck(c *gin.Context) {
 func getShortURL(c *gin.Context) {
 	shortCode := c.Param("code")
 
-	url, err := getURLByShortCode(shortCode)
+	url, err := store.getURLByShortCode(shortCode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve URL",
@@ -154,7 +154,7 @@ func updateShortURL(c *gin.Context) {
 	}
 
 	// Update the URL
-	url, err := updateURL(shortCode, req.URL)
+	url, err := store.updateURL(shortCode, req.URL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to update URL",
@@ -169,14 +169,14 @@ func updateShortURL(c *gin.Context) {
 		return
 	}
 
-	deleteCachedURL(shortCode)
+	cache.deleteCachedURL(shortCode)
 	c.JSON(http.StatusOK, url)
 }
 
 func deleteShortURL(c *gin.Context) {
 	shortCode := c.Param("code")
 
-	deleted, err := deleteURL(shortCode)
+	deleted, err := store.deleteURL(shortCode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to delete URL",
@@ -191,20 +191,20 @@ func deleteShortURL(c *gin.Context) {
 		return
 	}
 
-	deleteCachedURL(shortCode)
+	cache.deleteCachedURL(shortCode)
 	c.Status(http.StatusNoContent)
 }
 
 func redirectURL(c *gin.Context) {
 	shortCode := c.Param("code")
 
-	if cachedURL, err := getCachedURL(shortCode); err == nil {
+	if cachedURL, err := cache.getCachedURL(shortCode); err == nil {
 		recordAccess(shortCode)
 		c.Redirect(http.StatusFound, cachedURL)
 		return
 	}
 
-	url, err := getURLByShortCode(shortCode)
+	url, err := store.getURLByShortCode(shortCode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve URL",
@@ -219,15 +219,15 @@ func redirectURL(c *gin.Context) {
 		return
 	}
 
-	setCachedURL(shortCode, url.URL)
-	recordAccess(shortCode)
+	cache.setCachedURL(shortCode, url.URL)
+	store.recordAccess(shortCode)
 	c.Redirect(http.StatusFound, url.URL)
 }
 
 func getURLStatsHandler(c *gin.Context) {
 	shortCode := c.Param("code")
 
-	stats, err := getURLStats(shortCode)
+	stats, err := store.getURLStats(shortCode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Failed to retrieve stats",
@@ -246,7 +246,7 @@ func getURLStatsHandler(c *gin.Context) {
 }
 
 func listURLs(c *gin.Context) {
-	urls, err := getAllURLs()
+	urls, err := store.getAllURLs()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve URLs"})
 		return

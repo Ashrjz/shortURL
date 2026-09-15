@@ -1,6 +1,6 @@
 ## Learning Path (Priority Order)
 
-- [ ] Add tests (learn Go testing patterns)
+- [x] Add tests (learn Go testing patterns)
 - [x] Add Docker (learn containerization)
 - [x] Switch to PostgreSQL (learn production databases)
 - [x] Add JWT auth (learn security)
